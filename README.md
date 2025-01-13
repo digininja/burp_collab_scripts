@@ -1,5 +1,9 @@
 # Burp Collaborator Scripts
 
+## My Setup
+
+In my setup I've installed collaborator in `/opt/burp` and created a symlink from `/opt/burp/burpsuite_pro.jar` to the latest version of the jar file. This way I can keep old versions around but the symlink always points to the latest version. The scripts here all assume that the system is setup like this, if you want to keep your own setup then you will need to adjust the file locations appropriately.
+
 ## Start Scripts
 
 Rather than have to start and stop Collaborator by hand, I've created a start script and a systemd service file to make the process a lot easier and to fit with standard Linux services.
@@ -165,3 +169,19 @@ Congratulations, all simulated renewals succeeded:
 ```
 
 And that is it, next time certbot decides the certificates new renewing it should be able to handle the full process itself. Like I said at the start though, this has only been tested on my own system, so there may well be bugs and cases where it doesn't work. If you get stuck, raise a ticket with as much information as you can give and I'll see what I can do to help. I'm not an expert at this, I learned all of this in a morning, so may not be much use, but I'll try.
+
+## Automatic Collaborator Upgrade
+
+I often end up multiple releases of Collaborator behind just because I forget to keep my eye on the releases and so created this script to automate keeping it up to date for me. It is inspired by an original script by @flakpaket but any bugs are mine, not his.
+
+The script is `check_collab_version.sh` and to use it you can either place it in the path or in the directory with the Collaborator jar file. Once there, make it executable.
+
+The script works by calling the PortSwigger download server and checking the filename of the latest version of the jar file. It then compares this with the file I currently have symlinked to `/opt/burp/burpsuite_pro.jar` and if they don't match, it pulls down the latest version, moves the symlink over, and then restarts the service.
+
+To automate this I've setup a cron job to run at 2am every day to run the script:
+
+```
+0 2 * * * /usr/local/bin/check_collab_version.sh
+```
+
+If the script finds an update, it writes the details to standard out. I have a `MAILTO` address setup in my `crontab` file so that the details get sent to me so I know the upgrade has happened.
