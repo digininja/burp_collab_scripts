@@ -8,7 +8,7 @@ Because these files can be called from anywhere, I've put my config file at `/et
 
 To use these two scripts, copy the files into these locations:
 
-* `collab.service` -> `/etc/systemd/system/multi-user.target.wants/collab.service`
+* `collab.service` -> `/etc/systemd/system/collab.service`
 * `start_collab.sh` -> `/usr/local/bin/start_collab.sh`
 
 You then need to tell systemd that there is a new service for it to manage:

@@ -8,6 +8,7 @@ User=root
 ExecStart=/usr/local/bin/start_collab.sh
 Restart=always
 RestartSec=3
+TimeoutStopSec=100
 
 [Install]
 WantedBy=multi-user.target
