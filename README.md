@@ -172,7 +172,7 @@ And that is it, next time certbot decides the certificates new renewing it shoul
 
 ## Automatic Collaborator Upgrade
 
-I often end up multiple releases of Collaborator behind just because I forget to keep my eye on the releases and so created this script to automate keeping it up to date for me. It is inspired by an original script by @flakpaket but any bugs are mine, not his.
+I often end up multiple releases of Collaborator behind just because I forget to keep my eye on the releases and so created this script to automate keeping it up to date for me. It is inspired by an original script by [flakpaket](https://github.com/flakpaket) but any bugs are mine, not his.
 
 The script is `check_collab_version.sh` and to use it you can either place it in the path or in the directory with the Collaborator jar file. Once there, make it executable.
 
