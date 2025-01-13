@@ -49,21 +49,27 @@ To stop this file getting too big, I have the `collab_logrotate` in `/etc/logrot
 
 *Warning, this script works for me but has not been tested beyond my server, use it at your own risk.*
 
+Before going any further, please, backup your current Collaborator setup, if you are on a VM, snapshot it, if not, make copies of all config files, certificates, and anything else you think might be necessary to restore the system if things go wrong.
+
 This script is my attempt to automate renewing my Burp Collaborator certificate with Let's Encrypt. I'm using DNS TXT records which Collaborator itself is serving so the script takes the tokens passed by Let's Encrypt, updates the Collaborator config file, restarts it, then tells certbot to go ahead and do the renewal.
+
+This process assumes you are using my start up scripts covered above as the everything is automated once things are in place.
 
 For this script to work, you need to have already setup Collaborator and have running a TLS server, there are plenty of guides for this, including the official one from [PortSwigger](https://portswigger.net/burp/documentation/collaborator/server/private).
 
-I have two entries that need to go into the certificate, one for the domain itself, and one for a wildcard certificate for the domain, this requires two custom DNS records. From what I've been able to understand from the certbot process, the bot requests a challenge from LE and then calls the hook script with that challenge, the script has to then do something with the challenge, in our case update the config file, and then return control to certbot. It then requests the second challenge and passes that to the script which updates the config for a second time. Once both challenges are in place, Collaborator needs to be restarted for the changes to take affect. After all of this, we can return control to certbot and let it tell LE we are ready to respond.
+I have two entries that need to go into the certificate, one for the domain itself, and one for a wildcard for the domain, this requires two TXT DNS records. From what I've been able to understand from the certbot process, the bot requests a challenge from LE and then calls the hook script with that challenge, the script has to then do something with the challenge, in our case update the Collaborator config file, and then return control to certbot. Certbot then requests the second challenge and passes that to the script which updates the config for a second time. Once both challenges are in place, Collaborator needs to be restarted for the changes to take affect. After all of this, we can return control to certbot and let it tell LE we are ready to respond.
 
-Because of this two step process of updating the config file, I've chosen to start with a template config file based on my working file, copy that to an intermediate file containing the first challenge, and then copy that over the running config once it gets the second challenge.
+Because of this two step process of updating the config file, I've chosen to start with a template config file based on my working file, I copy that to an intermediate file containing the first challenge, and then copy that over the running config once it gets the second challenge.
 
-To set this up, I'
+If you are using my start up scripts, you will have your config file in `/etc/collab/collab.json`. This will be used as a template by the hook and needs to be copied to `/etc/collab/collab.json-template`.
+
+Once there, you need to add (or edit) the following section. This creates two hardcoded DNS TXT records with values `CHALLENGE1` and `CHALLENGE2`. These placeholders will be replaced by the hook in the two setup process described above.
 
 ```
 "customDnsRecords": [
  {
   "label": "_acme-challenge",
-  "record": "",
+  "record": "CHALLENGE1",
   "type": "TXT",
   "ttl": 60
  },
@@ -76,4 +82,64 @@ To set this up, I'
 ],
 ```
 
-For this to work, you will have already needed to get Collaborator working
+The next step is to place `acme_collab.py` in the certbot directory `/etc/letsencrypt` and make it executable. You also need to copy `collab-deploy-hook.sh` to `/etc/letsencrypt/renewal-hooks/deploy/collab.sh` and make it executable as well.
+
+Now is the time to test things.
+
+Let's start by checking the script works, you can do this by running the following:
+
+```
+CERTBOT_VALIDATION=123 ./acme-collab.py
+```
+
+If this is successful, there will be no output to screen, but the file `/etc/collab/collab.json-int` will have been created and in the `customDnsRecords` section, `CHALLENGE1` will have been replaced by `123`. If this worked, it has successfully simulated setting up the first challenge. If this failed, I can't give much advice here as it works on my system. If there are any errors displayed to screen, read those and do a bit of googling, see what you can find. For some additional debug, the `acme-collab.py` has a bunch of commented out print statements, these can be uncommented so when the script is ran it will tell you what is going on and what stage it thinks it is at. If you are really stuck, raise a ticket and I'll see what I can do to help.
+
+Assuming all is good so far, let's run the script again to do the second challenge:
+
+```
+CERTBOT_VALIDATION=987 ./acme-collab.py
+```
+
+If this step works, `/etc/collab/collab.json-int` will have been removed and the config file `/etc/collab/collab.json` updated with both challenge values, `123` and `987`. The collaborator server will have also been restarted. You can check this with:
+
+```
+dig TXT  _acme-challenge.<your domain> @<your IP>
+```
+
+This will give you two TXT records matching the expected values.
+
+Now all the testing is complete, we can now run it through certbot. This command tells it to use DNS for challenges and to use our script as the hook. Make sure to put your domain into the appropriate slots.
+
+```
+certbot certonly --manual --manual-auth-hook /etc/letsencrypt/acme-dns-auth.py --preferred-challenges dns --debug-challenges -d "*.<your domain>" -d <your domain> -v
+```
+
+This will give you a bunch of output, hopeful all good and no errors. This is a sample from my system:
+
+```
+Running deploy-hook command: /etc/letsencrypt/renewal-hooks/deploy/collab
+
+Successfully received certificate.
+Certificate is saved at: /etc/letsencrypt/live/<your domain>/fullchain.pem
+Key is saved at:         /etc/letsencrypt/live/<your domain>/privkey.pem
+This certificate expires on 2025-04-13.
+These files will be updated when the certificate renews.
+Certbot has set up a scheduled task to automatically renew this certificate in the background.
+```
+
+Some things to look out for:
+
+* The location of the certificate and key, these need to go into the Collaborator config file like this:
+
+```
+"ssl": {
+  "certificateFiles": [
+    "/etc/letsencrypt/live/<your domain>/fullchain.pem",
+    "/etc/letsencrypt/live/<your domain>/privkey.pem"
+  ]
+}
+```
+* Check the deploy-hook command has been ran, this is what restarts Collaborator after the new certificates have been issues. If this isn't ran, you may get new certificates, but the server will still be pointing at the old ones.
+* Check that the certificate is set to automatically renew, as long as you see this, you should now be able to leave the system to look after itself.
+
+
