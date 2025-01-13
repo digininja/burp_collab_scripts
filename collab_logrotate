@@ -1,0 +1,15 @@
+/var/log/collab/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 640 root adm
+    sharedscripts
+    postrotate
+        if pgrep -f burpsuite_pro.jar > /dev/null; then
+            service collab restart 2>&1 | logger -t collab.logrotate
+        fi
+    endscript
+}
