@@ -2,7 +2,7 @@
 
 install_directory=/opt/burp
 installed_version=$(basename `readlink -f $install_directory/burpsuite_pro.jar`)
-current_version=`curl 'https://portswigger-cdn.net/burp/releases/download?product=pro' -sI | grep content-disposition | sed "s/.*filename=\(.*\);.*/\1/"`
+current_version=`curl 'https://portswigger.net/burp/releases/download?product=pro' -sI | grep content-disposition | sed "s/.*filename=\(.*\);.*/\1/"`
 
 if [ "$installed_version" != "$current_version" ]; then
 	cd $install_directory
