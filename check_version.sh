@@ -6,7 +6,7 @@ current_version=`curl 'https://portswigger.net/burp/releases/download?product=pr
 
 if [ "$installed_version" != "$current_version" ]; then
 	cd $install_directory
-	curl -OJs 'https://portswigger-cdn.net/burp/releases/download?product=pro'
+	curl -OJs --location 'https://portswigger.net/burp/releases/download?product=pro'
 	rm burpsuite_pro.jar
 	ln -s $current_version burpsuite_pro.jar
 	/usr/sbin/service collab restart
